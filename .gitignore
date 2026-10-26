@@ -1,0 +1,21 @@
+# Allowlist. Nothing in this project is shared unless it is listed below.
+# Line 1 ignores everything in the project root. The "!" lines add back
+# what is meant to be shared. Call lists stay local.
+
+/*
+
+# Shared:
+!/.gitignore
+!/README.md
+!/CLAUDE.md
+!/REQUIREMENTS.md
+!/ADVERSUS-TEMPLATE.md
+!/MVP.md
+!/.claude/
+/.claude/settings.local.json
+/.claude/scheduled_tasks.lock
+
+# Safety net. Never share these.
+.env
+*.key
+*.pem
