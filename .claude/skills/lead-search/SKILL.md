@@ -25,12 +25,12 @@ Before any work, send one short message in English, easy to scan:
   | Step | Uses | Time | Your dialer |
   |---|---|---|---|
   | 1 Find companies | Registries, Google Maps | Mode 1: 15-30 min, mode 2: 20-40 min, mode 3: 30-60 min | Free, keep calling |
-  | 2 Check against Adversus | The dialer, read only | See `adversus-check` | **Busy, you cannot use Adversus** |
+  | 2 Check against Adversus | Adversus search, read only | Under a minute | Free, keep calling |
   | 3 Find contact people | Company websites | 2-3 min per fresh lead | Free, keep calling |
   | 4 Enter into Adversus (only if you say yes) | The dialer, writes | See `adversus-entry` | **Busy, you cannot use Adversus** |
 
 - **Total:** rough time for the whole run, and how much of it the dialer is busy.
-- **You need:** Chrome logged in to Adversus. Before steps 2 and 4, close your own dialer window.
+- **You need:** Chrome logged in to Adversus. Before step 4, close your own dialer window.
   Adversus allows only one, and it never dials anyone.
 - **You get:** the file path and a rough row count.
 - **Questions:** every question for the whole run at once: mode or area if unclear, and the
@@ -39,8 +39,8 @@ Before any work, send one short message in English, easy to scan:
 The answers are the go. Run the whole pipe without stopping and do not ask the same things again.
 
 **As you go:** at the start of each step, one line with the step, what it does and how long. For
-steps 2 and 4, lead with the dialer, for example
-`Step 2 of 4: DIALER BUSY, ca 17 min. Close your dialer now, you cannot use Adversus until I say it is free. Checking 34 companies, read only.`
+step 4, lead with the dialer, for example
+`Step 4 of 4: DIALER BUSY, ca 20 min. Close your dialer now, you cannot use Adversus until I say it is free. Entering 12 leads.`
 When a dialer step ends, one line: `Dialer free, you can use Adversus again.`
 
 **At the end:** the real time per step. If a step is far off, update its time in the skill it
@@ -108,7 +108,8 @@ Tested on all of Malmö (2026-10-16). Use it when one agent would need more than
   overlap and agents waste fetches deciding the edges.
 - **One brief file, short prompts.** Write the rules once to a brief file and point each agent at
   it with its batch. The brief carries the never-invent rule, the return format and "read only".
-- **Model: Sonnet** for registry sweeps and Adversus lookups. Usage, not speed, is the limit:
+- **Model: Sonnet** for registry sweeps. The Adversus check needs no agent, `adversus-check`
+  does a whole list in seconds. Usage, not speed, is the limit:
   Opus agents hit the session limit fast. TODO: do one test run with Haiku on the same batch and
   compare against Sonnet. Check whether Haiku misses hits, misreads digits or drifts from the rules.
 - **Save every 10 rows** to the agent's result file, and resume from it. A run can stop at any
@@ -180,6 +181,19 @@ A Maps hit is a name worth investigating, not a verified row. Maps has no compan
 count and no status, and it keeps cards for closed businesses. Everything from Maps goes through
 Step 4 to 6 like any other candidate.
 
+**Match Maps names to the registry by script.** Maps shows the sign on the door, the registry the
+legal name, so most pairs do not look alike. Save the Maps hits (`Namn`, `Adress`) and the registry
+pool (`Foretag`, `Orgnr`, `Adress`) as CSV and run
+`powershell -File scripts/match-registry.ps1 -Maps <maps.csv> -Registry <pool.csv> -Out <out.csv> -Town <town>`.
+
+- `sure, name`: take the org.nr.
+- `sure, address and name word` and `candidate`: check each pair yourself. These are a short list.
+- `none` or an address with many companies: a Maps-only name, handled as before.
+
+Tested on Malmö: 91 of 383 Maps names matched in 4 s, against 60 by agents before.
+
+Run the scripts in `scripts/` with the PowerShell tool. Started from Bash, Windows blocks them.
+
 Close the tabs you opened.
 
 ## Step 4, drop what does not belong
@@ -218,6 +232,13 @@ it already exists: the research is what reaches the person who dials.
 
 **The company's own website** gives everything human: what they do, who to ask for, direct
 numbers, the switchboard, the contact page URL.
+
+**Start with the script.** Save the rows' websites as CSV (`Name`, `Url`) and run
+`powershell -File scripts/get-site-contacts.ps1 -In <sites.csv> -Out <found.csv>`. It reads each
+home page and up to 3 linked contact or about pages and lists every phone number and email on
+them, with no model. Tested on Värnamo: the number to dial was among them for 34 of 37 sites.
+Then open only the page that shows those numbers, to pair names with numbers and pick the one to
+dial. A site that comes back with no number goes to the browser (see JavaScript pages below).
 
 **Who to ask for.** Not the registered director by default. At a small company that is a legal
 fact, not the person who decides about coffee or picks up the phone. Take names from the site's
@@ -268,6 +289,11 @@ wrote 559590-0791 for 556590-0791.
 
 Do this by script where you can: fetch the raw page and compare the digits in code. A model reading
 a page, or a fetch tool that summarizes it, can change a digit without anyone noticing.
+
+Then run `powershell -File scripts/digits.ps1 <list file>` on the finished file (Sweden). It checks
+every org.nr with the Luhn checksum and every phone number for shape, in about a second. Every
+flagged value goes back to its source page. Fix it from the page, never by adjusting digits until
+the check passes.
 
 Check the link columns too. A contact source URL that does not show that person is worse than an
 empty cell, because it looks like evidence.

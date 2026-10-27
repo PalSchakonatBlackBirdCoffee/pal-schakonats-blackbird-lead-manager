@@ -1,6 +1,6 @@
 ---
 name: adversus-check
-description: "Check Swedish or Danish companies against the existing leads in Adversus through Claude in Chrome, so a booker never spends a dial on a company a colleague already worked, and so the untouched ones rise to the top of the list. Use this whenever the user asks whether a company or a list has already been called, wants a ringlista or ringeliste checked against the CRM, mentions Adversus, says anything like har vi ringt dem, ligger de redan i listan, er de i Adversus, har vi ringet til dem, check these against my leads, or hands over a list file, a pasted list of company names, or a single company name, organisationsnummer or CVR for a spot check. Use it inside lead-search too, right after the filter step and before contact research. Every company is looked up by company ID and by name, every hit is opened so the call history can be read, and the result is one file with the leads nobody has worked on top and the already worked ones below with their Adversus status."
+description: "Check Swedish or Danish companies against the existing leads in Adversus through Claude in Chrome, so a booker never spends a dial on a company a colleague already worked, and so the untouched ones rise to the top of the list. Use this whenever the user asks whether a company or a list has already been called, wants a ringlista or ringeliste checked against the CRM, mentions Adversus, says anything like har vi ringt dem, ligger de redan i listan, er de i Adversus, har vi ringet til dem, check these against my leads, or hands over a list file, a pasted list of company names, or a single company name, organisationsnummer or CVR for a spot check. Use it inside lead-search too, right after the filter step and before contact research. Every company is looked up by company ID through Adversus' own search, misses by name, the call history of every hit is read without opening the dialer, and the result is one file with the leads nobody has worked on top and the already worked ones below with their Adversus status."
 ---
 
 # Adversus check
@@ -39,19 +39,14 @@ Run on its own, send one short message in English before any work:
 
 - **What happens:** every company is looked up in Adversus, and the list is split into fresh
   leads on top and already worked ones below.
-- **Your dialer: BUSY, ca N min. You cannot use Adversus during this check.** It opens leads in
-  the dialer view, read only, and never dials anyone. Close your own dialer window first, Adversus
-  allows only one.
-- **Takes:** ca 30 s per company. Give the total for this list.
+- **Your dialer: free, keep calling.** The check reads Adversus' own search in a background tab.
+  It opens no lead page and no dialer view, saves nothing and never dials anyone.
+- **Takes:** under a minute, plus writing the file.
 - **You need:** Chrome logged in to Adversus.
 - **You get:** the file path, and at the end a few questions about unclear matches.
 
-Then start. When done, say `Dialer free, you can use Adversus again.` Inside `lead-search`, its
-status lines for step 2 are enough. A spot check of one company needs no plan, but still say the
-dialer is busy for a minute.
-
-If a lead page shows "You have another dialer open", ask the booker to close theirs and wait. Do
-not click Retry and do not close it yourself.
+Then start. Inside `lead-search`, its status lines for step 2 are enough. A spot check of one
+company needs no plan.
 
 At the end, say the real time. If it is far off, update the time here and in the `lead-guide`
 menu.
@@ -70,48 +65,55 @@ This skill cannot work without Adversus, and a list that quietly went unchecked 
 like a checked one. Nobody downstream can tell the difference, which is why the failure has to be
 loud.
 
-So confirm the browser first: open `https://app.adversus.io/dialer#/list/search-campaigns` and
-look at the page. If Chrome is not connected, or the page is a login screen, or the Search leads
-table does not appear, **stop before doing any lookups**. Tell the booker plainly that Adversus
-is not reachable, ask them to open the dialler and sign in, and then wait. Do not start, do not
-half start, do not deliver a partially checked list. Begin only once they confirm.
-
-When the page loads correctly the search field selector already carries two chips, `CVR` and
-`Firmanavn`. Those two are what makes the lookup work. If they are missing, add them from the
-field dropdown to the left of the search box before searching.
+So open `https://app.adversus.io/` in a new tab of your own and run the lookup there. Its first
+call checks the login. If Chrome is not connected, the tab shows a login screen, or the script
+answers `STOP`, **stop before doing anything else**. Tell the booker plainly that Adversus is not
+reachable, ask them to sign in, and then wait. Never enter credentials. Do not start, do not half
+start, do not deliver a partially checked list. Begin only once they confirm.
 
 ## The lookup
 
-The search box is the one labelled `Search in campaign leads`. Type into it, press Return, wait
-**five seconds**, then read the results. At three seconds the table sometimes still shows the
-previous search's rows next to "Loading leads...", which would put a company in the wrong table.
-So always confirm that the `Result` cell matches what you searched before using a row.
+All lookups are done by `scripts/check.js`. It calls Adversus' internal search and timeline
+endpoints from the logged-in tab, the same ones the web app uses. Read only: nothing is saved, no
+lead page is opened, no call is placed. Tested on 2026-10-26: 715 Malmö companies in about 30 s
+against about 4 hours through the search box, with 13 errors of the old method found and no case
+where the old method was right and the script wrong.
 
-The cheapest read is `javascript_tool` on `document.body.innerText`, sliced between `Campaign\n`
-and `rows`, which returns only the result rows. `get_page_text` also works. Avoid `find` for
-reading results: it is model-backed, costs the most and is what hit the rate limit in the Malmö
-run. Screenshots are not needed.
+Paste the whole file into `javascript_tool`, followed by one call with the list's rows in order:
 
-Run both searches for several companies in one `browser_batch`, then read the results and take the
-first confident match:
+```js
+await bbCheck([['5565284329', 'Melleruds Färg AB'], ['', 'Bolaget Utan Orgnr AB']])
+```
 
-1. organisationsnummer without the dash, `5565284329`
-2. the full company name exactly as the ringlista has it, `Melleruds Färg AB`
+Each row is the company ID without the dash (`''` when it is `ej hittad` or `ikke fundet`) and
+the name to search (see below). It answers with one summary line. Then read the rows with
+`bbLines(0, 15)`, `bbLines(15, 30)` and so on, since `javascript_tool` truncates near 1000
+characters. Each line gives the row index, the group (`1a`, `1b`, `2`), every lead found with id,
+status, number of calls, longest call in seconds and date of the last call, and notes for the
+uncertain batch.
+
+What the script does, so the result can be read correctly:
+
+1. **Company ID first, for every row,** digits without the dash, `5565284329`. Only a hit whose
+   value is exactly those digits counts.
+2. **Name only for rows the ID search missed,** in lowercase, because a capital Å, Ä or Ö at the
+   start of a word never matches. The name search matches substrings (`ramo ab` also returns
+   `Entramo AB`), so only an exact name counts, ignoring case. Near names come back as a note.
 
 Two searches, and no third. The dashed organisationsnummer never matches (see below), so it is
 skipped. There is no clever fragment that widens the net either, so a company that misses both has
-missed, and you move on to the next one.
+missed.
 
-**Denmark:** the same two searches: the eight CVR digits and the full name.
+**Denmark:** the same two searches: the eight CVR digits and the full name. Field `112622` is
+called `CVR` in Adversus and holds Swedish org.nr too.
 
 The name to search is the registered name in the `Företag` cell with any parenthetical trade name
 removed. `AB Melleruds Bostäder (Mellbo)` goes in as `AB Melleruds Bostäder`, and
 `Matglädje i Mellerud AB (Hemköp Torget)` goes in as `Matglädje i Mellerud AB`. The parenthetical
 is the sign on the door, useful on the call and useless in the search box.
 
-The results table gives `Lead ID`, `Field`, `Result`, `Status` and `Campaign`. The `Result` cell
-shows the value that matched, so a hit on `CVR` is proof of identity on its own and a hit on
-`Firmanavn` can be read and compared against the company you were looking for.
+A hit on the company ID is proof of identity on its own. A hit on the name is an exact name, but
+still goes in the uncertain batch with `found by name only`.
 
 ### What a miss actually proves
 
@@ -139,9 +141,10 @@ Whole words that plainly sit inside leads it holds come back empty. So the name 
 hit but it can never establish an absence, and shortening a name to a fragment to "widen" the
 search does the opposite of what it looks like it does. Search the full name, once.
 
-Keep the name search all the same. In the Malmö run (715 companies) it found 9 leads the
+Keep the name search all the same. In Malmö (715 companies) it found 16 leads the
 organisationsnummer search missed, because those leads had no organisationsnummer stored. It also
-once returned an unrelated company, so read the `Result` cell before trusting a name hit.
+returns unrelated companies whose name contains the searched one, which is why only an exact name
+counts.
 
 That leaves the organisationsnummer without the dash as the only identifier that produces a
 trustworthy negative. Everything the output claims about a company not being in Adversus rests on
@@ -157,29 +160,31 @@ table 1.
 
 ## Reading a hit
 
-Open every hit. The status column alone cannot answer the question the booker is really asking,
-which is not "what does the CRM say" but "has anyone actually spoken to these people".
+The script reads the call history of every hit. The status alone cannot answer the question the
+booker is really asking, which is not "what does the CRM say" but "has anyone actually spoken to
+these people". The status can even disagree with the timeline (`Unprocessed` on a lead with real
+calls).
 
-Statuses seen in real data are `Unqualified`, `Invalid`, `Not interested`, `Automatic callback`,
-`Unsolved`, `Unprocessed`, `Private callback`, `Shared callback`, `Aut. redial` and `Success`.
-None of them distinguishes a lead somebody talked to from one that was opened and abandoned. The
-status in the search table can even disagree with the timeline (`Unprocessed` on a lead with real
-calls). The Activity timeline is what to read.
+Do not use the search's `contactAttempts` to skip a timeline. It is not a call count: in Malmö,
+408 of 425 hits with `contactAttempts` 0 had calls.
 
-Take the `Lead ID` from the results row and go straight to
-`https://app.adversus.io/reactive-dialer?mode=edit&leadid=<id>`. Opening that page places no
-call, and tested in the Malmö run: it does not create unclosed leads. Wait about four seconds,
-use `find` for the `Activity timeline` list, then `read_page` with the ref it returns. The tree
-comes back clean: who saved the lead as what, when, and whether a call is attached with its
-duration. A cheaper read is `javascript_tool` with a regex for `Duration (\d+) sec` on the page
-text. Timeline dates are MM/DD/YYYY; write them as YYYY-MM-DD.
+Each call in the timeline carries its length in seconds, the same figure the lead page shows as
+`Duration`. The date of the last call is `senast`. A planned callback date is never `senast`.
 
-A date in the timeline can be a planned callback in the future. Use the date of the latest call as
-`senast`, not the next planned call.
+Adversus answers with Danish statuses. The script writes them in English, as the cell uses them:
 
-While that page is open, touch nothing. Not the green call button in the top bar, not `Save
-lead`, not the `Status` field, not `Blocklist lead`. This skill has no business writing to
-Adversus, and a stray click on that page has consequences that reach a real phone.
+| Adversus | Cell |
+|---|---|
+| `Succes` | `Success` |
+| `Genopkald` | `Callback` |
+| `Ukvalificeret` | `Unqualified` |
+| `Ugyldigt` | `Invalid` |
+| `Ikke interesseret` | `Not interested` |
+| `Ubehandlet` | `Unprocessed` |
+| `Aut. redial` | `Aut. redial` |
+
+Any other status is kept as Adversus writes it and goes in the uncertain batch. When it is
+resolved, add it to this table and to `STATUS` in `scripts/check.js`.
 
 ### Worked, or not
 
@@ -202,6 +207,24 @@ So:
 
 An empty or unfamiliar status is not a reason to guess. Record it, put the row where the timeline
 says it belongs, and raise the status in the uncertain batch at the end.
+
+## If the API fails
+
+The endpoints are undocumented and can change. If the script answers `STOP: API error`, nothing
+it found is used. Tell the booker the check could not run, and deliver nothing as checked.
+
+On the booker's yes, the slow manual way still works, one company at a time, ca 30 s each, and it
+uses the dialer:
+
+- The booker closes their own dialer first. Adversus allows only one. If a page shows "You have
+  another dialer open", wait for them; do not click Retry.
+- Search `https://app.adversus.io/dialer#/list/search-campaigns` with the `CVR` and `Firmanavn`
+  chips: org.nr without dash, then the full name. Wait five seconds and check that the `Result`
+  cell matches what you searched before using a row.
+- Open each hit at `https://app.adversus.io/reactive-dialer?mode=edit&leadid=<id>` and read
+  `Duration (\d+) sec` from the page text with `javascript_tool`. Timeline dates are MM/DD/YYYY.
+- On that page touch nothing: not the green call button, not `Save lead`, not `Status`, not
+  `Blocklist lead`. When done, navigate away and say `Dialer free, you can use Adversus again.`
 
 ## Output
 
