@@ -44,7 +44,7 @@ window.bbClose = (s, data, note, status, nextCall) => {
   return bbPost('/api/v2/dialer/sessions/' + s.id + '/close', {...s, lead}, {'ADV-Update-Session-Expiration': 'true'});
 };
 
-window.bbCallback = {type: 'offset', offset: 'PT15M'};
+window.bbCallback = {type: 'offset', offset: 'PT5M'};
 
 window.bbCreate = async ({note, fields}) => {
   if (!window.__bbe) return 'STOP: run bbSetup first';

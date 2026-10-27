@@ -1,6 +1,6 @@
 ---
 name: adversus-entry
-description: "Put the untouched leads from a Swedish ringlista or Danish ringeliste into an Adversus campaign as private callbacks, through Adversus' own API from a logged-in Claude in Chrome tab (the dialer page is the fallback), so the booker can start dialling them without typing anything. Two kinds of rows: new companies (table 1a) are created, and companies already in Adversus that nobody has spoken to (table 1b) are refreshed with a note and a callback. Use this whenever the user wants leads added, created, entered or imported into Adversus, wants existing leads put on callback, says lägg in leads, lägg in listan, skapa leads, sätt callback, læg dem ind, add these to Adversus, put them in the dialer, or hands over a list file and asks for it to be entered. Use it as the closing offer of lead-search too, after the file is written. The booker picks new, existing or both, then the campaign and the rows, before anything is written. Rows in table 2 (real conversations) are never touched. Every lead gets the number to dial, the contact people in the note, and a private callback in 15 minutes with status Callback, and every lead is read back out of the CRM afterwards to prove it landed."
+description: "Put the untouched leads from a Swedish ringlista or Danish ringeliste into an Adversus campaign as private callbacks, through Adversus' own API from a logged-in Claude in Chrome tab (the dialer page is the fallback), so the booker can start dialling them without typing anything. Two kinds of rows: new companies (table 1a) are created, and companies already in Adversus that nobody has spoken to (table 1b) are refreshed with a note and a callback. Use this whenever the user wants leads added, created, entered or imported into Adversus, wants existing leads put on callback, says lägg in leads, lägg in listan, skapa leads, sätt callback, læg dem ind, add these to Adversus, put them in the dialer, or hands over a list file and asks for it to be entered. Use it as the closing offer of lead-search too, after the file is written. The booker picks new, existing or both, then the campaign and the rows, before anything is written. Rows in table 2 (real conversations) are never touched. Every lead gets the number to dial, the contact people in the note, and a private callback in 5 minutes with status Callback, and every lead is read back out of the CRM afterwards to prove it landed."
 ---
 
 # Adversus entry
@@ -61,7 +61,7 @@ Run on its own, send one short message in English before any work:
   anyone.
 - **Takes:** a few seconds per lead, plus the questions.
 - **You need:** Chrome logged in to Adversus.
-- **You get:** the leads in your callback queue, each due 15 minutes after it is saved.
+- **You get:** the leads in your callback queue, each due 5 minutes after it is saved.
 - **Questions:** campaign, which rows, `Save lead as`, all at once.
 
 The answers are the go. Inside `lead-search` these were asked at the start: use those answers,
@@ -115,8 +115,8 @@ Then show the chosen rows as a numbered list, company name, number of employees 
 lead id and status, and ask which rows to enter. Wait for the answer. "All of them" is a perfectly
 normal answer and is what he will usually say, but he says it, you do not assume it.
 
-Callbacks are all set to 15 minutes, however many rows there are. Do not offer to spread them out
-(booker's instruction, 2026-10-21).
+Callbacks are all set to 5 minutes, however many rows there are. Do not offer to spread them out
+(booker's instruction, 2026-10-21; changed from 15 to 5 minutes 2026-10-27).
 
 This is a write into a live CRM that a whole team works from, and the list is often long enough
 that reading it back is the only chance anyone gets to catch a row that should not go in. It costs
@@ -245,16 +245,16 @@ click-and-type method in "If the API fails" below.
 
 The same three settings on every lead:
 
-- `Callback time` = **15 minutes**
+- `Callback time` = **5 minutes**
 - `Private callback` ticks itself when the callback time is set, leave it ticked
 - `Status` = **Callback**
 
-Fifteen minutes is fixed. If the booker wants something else he will say so in the request, and
+Five minutes is fixed. If the booker wants something else he will say so in the request, and
 then you do what he said, but there is no question to ask here.
 
 `Blocklist lead` stays unticked. Ticking it is close to unrecoverable from the booker's side.
 
-`entry.js` sends exactly this on every lead: status `Genopkald`, callback `PT15M`, private, not
+`entry.js` sends exactly this on every lead: status `Genopkald`, callback `PT5M`, private, not
 blocklisted, owner from `bbSetup`.
 
 ## Step 7 - Write
@@ -296,7 +296,7 @@ the new ones, minus the creation. This is a standard part of the run, not an exc
   and name it in the report. The list can be days old, and a colleague may have reached them since.
   `bbRefresh` does this check itself and returns `SKIP` with the reason.
 - Write the note exactly as Step 5 describes, then `await bbRefresh(<lead id>, '<note>')`.
-- It saves `Callback time` 15 minutes, `Status` Callback, owner the booker, per Step 5b and Step 6,
+- It saves `Callback time` 5 minutes, `Status` Callback, owner the booker, per Step 5b and Step 6,
   and changes nothing else.
 - A lead in another campaign than the one in `bbSetup` returns `STOP`. Run `bbSetup` with that
   lead's campaign and try again. Refreshing never moves a lead.
@@ -324,7 +324,7 @@ values, so `bbVerify` opens the lead and saves it again unchanged, with its call
 the one it already has. That adds one more save line to the timeline, which is expected.
 
 Do not use the counters on the campaign list to verify. `My callbacks` stays where it was after
-creating twenty two leads, because a callback fifteen minutes out counts as `Upcoming leads` and
+creating twenty two leads, because a callback five minutes out counts as `Upcoming leads` and
 does not become yours until it is due. That number looking wrong does not mean anything went
 wrong, and it looking right would not have meant anything either.
 
@@ -388,7 +388,7 @@ window.__set = (labelText, value) => {
 ```
 
 The two selects take Danish internal values, not the English labels on screen:
-`Callback time` takes `PT15M`, `Status` takes `Genopkald`.
+`Callback time` takes `PT5M` (not yet tried on the page), `Status` takes `Genopkald`.
 
 Save with the button, not with a form submit:
 
