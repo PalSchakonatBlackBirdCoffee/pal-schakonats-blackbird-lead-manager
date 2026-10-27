@@ -27,11 +27,11 @@ Before any work, send one short message in English, easy to scan:
   | 1 Find companies | Registries, Google Maps | Mode 1: 15-30 min, mode 2: 20-40 min, mode 3: 30-60 min | Free, keep calling |
   | 2 Check against Adversus | Adversus search, read only | Under a minute | Free, keep calling |
   | 3 Find contact people | Company websites | 2-3 min per fresh lead | Free, keep calling |
-  | 4 Enter into Adversus (only if you say yes) | The dialer, writes | See `adversus-entry` | **Busy, you cannot use Adversus** |
+  | 4 Enter into Adversus (only if you say yes) | Adversus API, writes | A few seconds per lead | **Closed** ca 1 min |
 
-- **Total:** rough time for the whole run, and how much of it the dialer is busy.
-- **You need:** Chrome logged in to Adversus. Before step 4, close your own dialer window.
-  Adversus allows only one, and it never dials anyone.
+- **Total:** rough time for the whole run, and how long the dialer must be closed.
+- **You need:** Chrome logged in to Adversus. Before step 4, close your own dialer window. Running
+  next to an open dialer is not tested yet. It never dials anyone.
 - **You get:** the file path and a rough row count.
 - **Questions:** every question for the whole run at once: mode or area if unclear, and the
   `adversus-entry` questions (which rows, campaign, `Save lead as`).
@@ -40,7 +40,7 @@ The answers are the go. Run the whole pipe without stopping and do not ask the s
 
 **As you go:** at the start of each step, one line with the step, what it does and how long. For
 step 4, lead with the dialer, for example
-`Step 4 of 4: DIALER BUSY, ca 20 min. Close your dialer now, you cannot use Adversus until I say it is free. Entering 12 leads.`
+`Step 4 of 4: CLOSE YOUR DIALER now, ca 1 min, I say when it is free. Entering 12 leads.`
 When a dialer step ends, one line: `Dialer free, you can use Adversus again.`
 
 **At the end:** the real time per step. If a step is far off, update its time in the skill it
