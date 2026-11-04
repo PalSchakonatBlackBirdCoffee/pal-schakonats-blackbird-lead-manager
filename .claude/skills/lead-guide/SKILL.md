@@ -11,7 +11,7 @@ booker its own plan when it starts.
 | You want | Say for example | Takes about | Your dialer |
 |---|---|---|---|
 | Leads around a booked meeting | `Leads runt Ekerö centrum` | 1-1.5 h | **Closed** ca 1 min, only if you want the leads entered |
-| Leads between two meetings | `Leads mellan Borås och Ulricehamn, möte 10:00 och 14:00` | 1-2 h | **Closed** ca 1 min, only if you want the leads entered |
+| Leads between two meetings, 20 to 31 min from the nearest meeting first, max 40 | `Leads mellan Borås och Ulricehamn, möte 10:00 och 14:00` | 1-2 h | **Closed** ca 1 min, only if you want the leads entered |
 | All companies in an area (max 50) | `Alla bolag i Mölndal Kvarnbyn` | 2-4 h | **Closed** ca 1 min, only if you want the leads entered |
 | Danish leads, any of the above | `Leads omkring Aarhus Ø` | same | same |
 | Check a list or one company | `Kolla Ringlista Värnamo mot Adversus` | under a minute | Free |

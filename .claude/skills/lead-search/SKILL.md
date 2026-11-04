@@ -1,6 +1,6 @@
 ---
 name: lead-search
-description: "Build a verified call list (ringlista or ringeliste) of Swedish or Danish companies worth calling about Blackbird Coffee workplace coffee, delivered as a markdown table. Three modes: around one booked meeting (everything within 30 minutes' drive), between two booked meetings (everything along the route that adds only a short detour), or a whole area (a kommun, postort, industriområde, by or postnummer, no meeting needed). Use this whenever the user asks for leads, a call list, a ringlista, a ringeliste, prospects, nearby companies, who else to ring, companies between two meetings, or all companies in an area, or just pastes a company name, an address or two meetings. Registry sources are swept first, then Google Maps is read through the browser as a coverage check. Every row carries the number to dial, named contacts where they exist, the company ID, employee count, location and links to the source pages. The table is checked against Adversus with adversus-check before the file is saved, and the booker is then asked whether the fresh rows should be entered with adversus-entry. A request for more leads that names no place goes to lead-guide instead."
+description: "Build a verified call list (ringlista or ringeliste) of Swedish or Danish companies worth calling about Blackbird Coffee workplace coffee, delivered as a markdown table. Three modes: around one booked meeting (everything within 30 minutes' drive), between two booked meetings (along the route, at most 40 minutes from the nearest meeting, 20 to 31 minutes first), or a whole area (a kommun, postort, industriområde, by or postnummer, no meeting needed). Use this whenever the user asks for leads, a call list, a ringlista, a ringeliste, prospects, nearby companies, who else to ring, companies between two meetings, or all companies in an area, or just pastes a company name, an address or two meetings. Registry sources are swept first, then Google Maps is read through the browser as a coverage check. Every row carries the number to dial, named contacts where they exist, the company ID, employee count, location and links to the source pages. The table is checked against Adversus with adversus-check before the file is saved, and the booker is then asked whether the fresh rows should be entered with adversus-entry. A request for more leads that names no place goes to lead-guide instead."
 ---
 
 # Lead search
@@ -83,14 +83,26 @@ Input: one anchor company or address, usually a company where a meeting is booke
 
 Input: meeting A and meeting B, in that order. Times are useful but not required.
 
-- A lead qualifies when the **detour** is at most **15 minutes**: drive A to lead, plus lead to B,
-  minus the direct drive A to B.
-- Build the pool from three places: the ring around A, the ring around B, and the towns and
-  business areas the road from A to B passes through. Open the A to B route in Google Maps once to
-  see which road the salesperson actually takes and which places it passes.
-- Sort along the route: by drive time from A, so the list reads in driving order.
+- **Between first.** Open the A to B route in Google Maps once and list the towns and business
+  areas the road passes through. Search those before the rings around A and B. A place counts as
+  between when it is on that road or about 10 km off it.
+- **Hard wall: 40 minutes to the nearest meeting**, whichever of A or B is closer by car. A lead
+  more than 40 minutes from both is out.
+- **Priority, the Goldilocks rule** (booker's instruction, 2026-11-04):
+
+  | Priority | Drive to nearest meeting | Why |
+  |---|---|---|
+  | 1 | 20 to 31 min | Just right: fills the gap between the meetings |
+  | 2 | 32 to 40 min | A little far, still worth the drive |
+  | 2 | 10 to 19 min | Close, but leaves part of the drive empty |
+  | 3 | under 10 min | Close to a meeting. Only to fill up the list |
+
+- Sort by priority, then along the route by drive time from A.
 - If the booker gave meeting times, put the free time between them in the notes (gap minus direct
   drive). If it is under an hour, say so, since only one or two visits fit.
+- If priority 1 lands almost all on one side, say so in the notes. Do not change the rule.
+  Tested on Västervik to Mönsterås (2026-11-04): 180 of 186 in priority 1 were in Oskarshamn,
+  since E22 runs through forest on the Västervik side.
 
 ### Mode 3, area
 
@@ -288,7 +300,7 @@ Open the browser if it matters. Never rebuild an address from the pattern of col
 | Mode | What goes in the drive column |
 |---|---|
 | 1 | Drive distance and time from the anchor |
-| 2 | Drive from A, drive to B, and the detour |
+| 2 | Drive from A, drive to B, the nearest meeting and the priority: `70,7 km, 57 min; 30,0 km, 23 min; närmast B, prio 1` |
 | 3 | Nothing, the column is left out |
 
 Estimate first, from the road distance:
@@ -302,7 +314,9 @@ Write estimates with `ca`, for example `14 km, ca 20 min`.
 Check the real figure in Google Maps only where it decides whether a row lives:
 
 - Mode 1: estimates between 22 and 38 minutes.
-- Mode 2: detours between 10 and 20 minutes. Use a directions URL with the lead as a waypoint.
+- Mode 2: every row, see below. To sort the pool first, allabolag's coordinates work: on
+  Västervik to Mönsterås, straight-line km to the meeting was about the road minutes. They can be
+  wrong (2 of 11 on that run), so never put an estimate in the table.
 
 Drop `ca` on checked figures, so a checked number and an estimate never look the same.
 
@@ -365,7 +379,7 @@ ringing to what they need afterwards.
 | Why Blackbird | Varför Blackbird | Hvorfor Blackbird |
 | Address | Adress | Adresse |
 | Drive (mode 1) | Körsträcka från ankaret | Køretid fra ankeret |
-| Drive (mode 2) | Från A, till B, omväg | Fra A, til B, omvej |
+| Drive (mode 2) | Från A, till B, närmast | Fra A, til B, nærmest |
 | Map link | Google Maps | Google Maps |
 | Email | E-post | E-mail |
 

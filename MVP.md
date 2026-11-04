@@ -48,8 +48,9 @@ Notes:
 
 - **Mode 1** is today's skill, unchanged.
 - **Mode 2** is new. The candidate pool is built from the towns and estates along the road
-  between A and B, plus the ring around each meeting. The table gets one extra column, `Omväg`,
-  and drive times are checked in Google Maps for anything close to the limit, just like today.
+  between A and B, plus the ring around each meeting. Max 40 minutes to the nearest meeting,
+  20 to 31 minutes first (decided 2026-11-04, see `lead-search`). Every row's drive times are read
+  in Google Maps.
 - **Mode 3** drops the drive time column and the directions link changes from "from the anchor"
   to a plain map link. It needs a cap, since an area like "Göteborg" has thousands of companies.
   Suggestion: stop at 50 rows, which is the cap already used on Ekerö.
@@ -103,8 +104,7 @@ the end of each run.
 
 ## Open questions
 
-1. **Mode 2 limit.** How many extra minutes of driving is acceptable for a lead between two
-   meetings? 10 min? 15 min?
+1. **Mode 2 limit.** Decided 2026-11-04: max 40 minutes to the nearest meeting, 20 to 31 first.
 2. **Mode 3 cap.** Is 50 rows right for an area search, or should it ask each time?
 3. **Danish output.** Are the Danish lists read by Danish bookers, so headers and notes should be
    in Danish? And which Adversus campaigns do Danish leads go into?
