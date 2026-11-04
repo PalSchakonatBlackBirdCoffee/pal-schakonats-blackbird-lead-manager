@@ -15,7 +15,7 @@ and only adds what is new: the modes and the country split.
 ```
 blackbird-leads/
   CLAUDE.md                     what the project is, the rules, how to start a search
-  REQUIREMENTS.md               what makes a valid lead (4-50 employees, exclusions)
+  REQUIREMENTS.md               what makes a valid lead (3-50 employees, exclusions)
   ADVERSUS-TEMPLATE.md          what to write in the Adversus note
   MVP.md                        this file
   .claude/skills/

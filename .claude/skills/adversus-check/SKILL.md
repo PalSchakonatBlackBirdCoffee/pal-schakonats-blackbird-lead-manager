@@ -51,6 +51,12 @@ company needs no plan.
 At the end, say the real time. If it is far off, update the time here and in the `lead-guide`
 menu.
 
+## Name the chat
+
+Run on its own, rename the session to `Check <list name>`, for example `Check Ringlista Malmö`,
+or `Check <company>` for a spot check. Inside `lead-search`, keep its name. If the rename tool is
+not available, skip it.
+
 ## Country
 
 Swedish and Danish companies sit in the same Adversus, in different campaigns. The company ID

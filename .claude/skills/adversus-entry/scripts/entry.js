@@ -4,6 +4,8 @@
 //   await bbSetup(123308, 'Pål Schakonat')        campaign id, booker's name exactly as in Adversus
 //   await bbCreate({note: 'RING: ...', fields: {Firmanavn: 'X AB', CVR: '5566802483', Telefon: '0456699300', ...}})
 //   await bbRefresh(1036696057, 'RING: ...')      a 1b lead: note and callback, its fields stay as they are
+//   await bbRefresh(1036696057, 'RING: ...', true)  only when the booker says to take this lead from a colleague
+//   await bbSetPhone(1036696155, '0708855504')    a 1b lead with no number: fills the empty Telefon field
 //   await bbVerify(1054984770)                    read a lead back
 // Every call returns one short line. Anything starting with STOP means: stop and tell the booker.
 
@@ -46,6 +48,24 @@ window.bbClose = (s, data, note, status, nextCall) => {
 
 window.bbCallback = {type: 'offset', offset: 'PT5M'};
 
+// The lead's sessions, newest first, or null if the timeline cannot be read.
+window.bbSessions = async (leadId) => {
+  const a = await fetch('/api/v2/dialer/leads/' + leadId + '/activity', {headers: window.__bbe.H});
+  if (a.status !== 200) return null;
+  const j = await a.json();
+  return (Array.isArray(j) ? j : (j.data || [])).filter(e => e.type === 'session')
+    .sort((x, y) => String(y.datetime).localeCompare(String(x.datetime)));
+};
+
+// A colleague's private or shared callback, overdue or not. Saving the lead would take it from them,
+// since every save sets the owner to the booker. An automatic redial belongs to nobody, so it does not count.
+window.bbHeldBy = (sessions) => {
+  const last = sessions[0];
+  if (!last || !/redial/.test(last.statustype) || last.statustype === 'auto-redial') return '';
+  if (String(last.userid) === String(window.__bbe.userId)) return '';
+  return last.statustype + ' by ' + last.logname + ', due ' + String(last.redialtime).slice(0, 16);
+};
+
 window.bbCreate = async ({note, fields}) => {
   if (!window.__bbe) return 'STOP: run bbSetup first';
   const data = {};
@@ -70,24 +90,16 @@ window.bbCreate = async ({note, fields}) => {
   return 'created ' + name + ': lead ' + c.json.lead.id;
 };
 
-window.bbRefresh = async (leadId, note) => {
+window.bbRefresh = async (leadId, note, takeOver) => {
   if (!window.__bbe) return 'STOP: run bbSetup first';
   // Re-check the timeline: a real call or someone else's callback since the list was made means hands off.
-  const a = await fetch('/api/v2/dialer/leads/' + leadId + '/activity', {headers: window.__bbe.H});
-  if (a.status !== 200) return 'STOP: activity ' + a.status;
-  const j = await a.json();
-  const sessions = (Array.isArray(j) ? j : (j.data || [])).filter(e => e.type === 'session')
-    .sort((x, y) => String(y.datetime).localeCompare(String(x.datetime)));
+  const sessions = await bbSessions(leadId);
+  if (!sessions) return 'STOP: activity ' + leadId + ', nothing written';
   const longest = Math.max(0, ...sessions.flatMap(e => (e.cdr_data || []).map(x => +x.billsec || 0)));
   if (longest >= 20) return 'SKIP ' + leadId + ': has a call of ' + longest + ' s';
-  const last = sessions[0];
-  if (last && /redial/.test(last.statustype) && last.statustype !== 'auto-redial' && String(last.userid) !== String(window.__bbe.userId) &&
-      new Date(last.redialtime) > new Date()) {
-    return 'SKIP ' + leadId + ': ' + last.statustype + ' by ' + last.logname;
-  }
-  if (last && last.campaign_name && last.campaign_name !== window.__bbe.camp.name) {
-    return 'STOP: lead ' + leadId + ' is in ' + last.campaign_name + ', run bbSetup with that campaign';
-  }
+  const held = bbHeldBy(sessions);
+  if (held && !takeOver) return 'SKIP ' + leadId + ': ' + held;
+  // The campaign is checked on the lead itself below. A session's campaign_name goes stale when a lead is moved.
   const o = await bbPost('/api/v2/dialer/sessions/createForLead', {lead: {id: leadId}});
   if (o.status !== 200 || !o.json || !o.json.lead) return 'STOP: open ' + leadId + ' ' + o.status + ', nothing written';
   if (String(o.json.lead.campaignId) !== String(window.__bbe.camp.id)) {
@@ -98,10 +110,42 @@ window.bbRefresh = async (leadId, note) => {
   return 'refreshed lead ' + leadId;
 };
 
+// Fills the Telefon field of an existing lead only when it is empty, so the dialer has a number to ring.
+// A number already there is never replaced. Status, callback time and the other fields stay as they are.
+window.bbSetPhone = async (leadId, digits) => {
+  if (!window.__bbe) return 'STOP: run bbSetup first';
+  const f = window.__bbe.fields.find(x => x.name === 'Telefon');
+  if (!f) return 'STOP: no field Telefon in this campaign, nothing written';
+  const sessions = await bbSessions(leadId);
+  if (!sessions) return 'STOP: activity ' + leadId + ', nothing written';
+  const held = bbHeldBy(sessions);
+  if (held) return 'SKIP ' + leadId + ': ' + held;
+  const o = await bbPost('/api/v2/dialer/sessions/createForLead', {lead: {id: leadId}});
+  if (o.status !== 200 || !o.json || !o.json.lead) return 'STOP: open ' + leadId + ' ' + o.status + ', nothing written';
+  const l = o.json.lead;
+  if (String(l.campaignId) !== String(window.__bbe.camp.id)) {
+    return 'STOP: lead ' + leadId + ' is in campaign ' + l.campaignId + ', run bbSetup with that campaign';
+  }
+  const next = l.nextCall ? {type: 'fixed', timestamp: new Date(l.nextCall).toISOString().replace('.000', '')} : null;
+  const cur = Object.values(l.data || {}).find(x => x.name === 'Telefon');
+  if (cur && cur.value) {
+    await bbClose(o.json, l.data, '', l.status, next);
+    return 'SKIP ' + leadId + ': Telefon is already ' + cur.value;
+  }
+  const data = {...l.data, [f.headingId]: {headingId: f.headingId, name: f.name, value: String(digits), type: f.type}};
+  const r = await bbClose(o.json, data, '', l.status, next);
+  if (r.status !== 200) return 'STOP: save ' + leadId + ' failed ' + r.status + ' ' + r.text;
+  return 'set Telefon ' + digits + ' on lead ' + leadId;
+};
+
 // Reads a lead back. Search returns no field values, so the lead is opened and saved again unchanged,
 // with its callback time pinned to the one it already has.
 window.bbVerify = async (leadId) => {
   if (!window.__bbe) return 'STOP: run bbSetup first';
+  const sessions = await bbSessions(leadId);
+  if (!sessions) return 'STOP: activity ' + leadId;
+  const held = bbHeldBy(sessions);
+  if (held) return 'SKIP ' + leadId + ': ' + held;
   const o = await bbPost('/api/v2/dialer/sessions/createForLead', {lead: {id: leadId}});
   if (o.status !== 200 || !o.json || !o.json.lead) return 'STOP: open ' + leadId + ' ' + o.status;
   const l = o.json.lead;

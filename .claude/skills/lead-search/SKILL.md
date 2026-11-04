@@ -17,24 +17,27 @@ reply. No long write-up, the table is the deliverable.
 
 ## Tell the booker first
 
-Before any work, send one short message in English, easy to scan:
+Before any work, send this message in English, with the real values filled in.
+Leave out anything that does not apply.
 
-- **What happens:** the mode and area, then the steps as a table, with a column saying whether
-  the step uses the dialer:
+**<Mode and area>. <Number of leads> leads for <booker>.**
 
-  | Step | Uses | Time | Your dialer |
-  |---|---|---|---|
-  | 1 Find companies | Registries, Google Maps | Mode 1: 15-30 min, mode 2: 20-40 min, mode 3: 30-60 min | Free, keep calling |
-  | 2 Check against Adversus | Adversus search, read only | Under a minute | Free, keep calling |
-  | 3 Find contact people | Company websites | 2-3 min per fresh lead | Free, keep calling |
-  | 4 Enter into Adversus (only if you say yes) | Adversus API, writes | A few seconds per lead | **Closed** ca 1 min |
+| Step | What happens | Time | Your dialer |
+|---|---|---|---|
+| 1 | Find companies | Mode 1: 15-30 min, mode 2: 20-40 min, mode 3: 30-60 min | Free |
+| 2 | Check against Adversus | Under a minute | Free |
+| 3 | Find contact people | 2-3 min per fresh lead | Free |
+| 4 | Enter into Adversus (only if you say yes) | ca 1 min | **Closed** |
 
-- **Total:** rough time for the whole run, and how long the dialer must be closed.
-- **You need:** Chrome logged in to Adversus. Before step 4, close your own dialer window. Running
-  next to an open dialer is not tested yet. It never dials anyone.
-- **You get:** the file path and a rough row count.
-- **Questions:** every question for the whole run at once: mode or area if unclear, and the
-  `adversus-entry` questions (which rows, campaign, `Save lead as`).
+**Total:** time for the whole run, and how long the dialer is closed.
+**You need:** Chrome logged in to Adversus.
+**Before step 4:** Close your dialer. I tell you when, and when it is free again. Nothing gets dialled.
+**You get:** what the list contains and where the leads end up.
+**Questions:** every question for the whole run at once: mode or area if unclear, and the
+`adversus-entry` questions (which rows, campaign, `Save lead as`).
+
+Show only this run's times, with step 3 as a total. Do not repeat the plan as a paragraph. If the
+app shows a recap box, write only: `Plan is ready, waiting for your answers.`
 
 The answers are the go. Run the whole pipe without stopping and do not ask the same things again.
 
@@ -45,6 +48,12 @@ When a dialer step ends, one line: `Dialer free, you can use Adversus again.`
 
 **At the end:** the real time per step. If a step is far off, update its time in the skill it
 belongs to and in the `lead-guide` menu.
+
+## Name the chat
+
+Once the area is known, rename the session to `Leads <Ort> <YYYY-MM-DD>`, for example
+`Leads Helsingborg 2026-10-29`. In mode 2, use `Leads <Ort A>-<Ort B> <YYYY-MM-DD>`. If the
+rename tool is not available, skip it.
 
 ## Before you start
 
@@ -143,6 +152,13 @@ Work outward from the anchor or through the area, because proximity is the scarc
 Use the registry and directory sources in the country file. Listings by postnummer or street are
 the highest yield, because they enumerate an area rather than making you guess names.
 
+**Sweden: start with the script.**
+`& scripts/sweep-allabolag.ps1 -Query <kommun or postnummer list> -Kommun <kommun list> -Out <pool.csv>`
+lists every company with 3 to 50 employees, largest first, with org.nr, address, phone and a `Flag`
+for konkurs, likvidation, fusion and churches. A kommun name as query covers the whole kommun
+without guessing postnummer; `-Kommun` drops the companies elsewhere that match the name. Tested on
+Simrishamn and Tomelilla (2026-10-27): 372 companies in about a minute.
+
 Gather generously before filtering. Step 4 and 5 drop many candidates, and going back for more is
 slower than casting wide once.
 
@@ -208,6 +224,9 @@ The country file lists the local name signs for paper entities and the local sol
 The registry employee figure is for the whole company, not the site. A high band across several
 sites can still be a well sized site. Say so in the row rather than guessing.
 
+**Size does not rank leads.** Inside 3 to 50 employees, a small company counts the same as a big one.
+Never cut the pool or pick rows by size (booker's instruction, 2026-10-30).
+
 ## Step 5, check against Adversus
 
 Run the `adversus-check` skill on the filtered candidates, before any contact research. In a
@@ -233,7 +252,13 @@ it already exists: the research is what reaches the person who dials.
 **The company's own website** gives everything human: what they do, who to ask for, direct
 numbers, the switchboard, the contact page URL.
 
-**Start with the script.** Save the rows' websites as CSV (`Name`, `Url`) and run
+**Sweden: hitta first.** Save the fresh rows' org.nr as CSV (`Orgnr`) and run
+`& scripts/hitta.ps1 -In <rows.csv> -Out <hitta.csv> -Lat <anchor lat> -Lon <anchor lon>`. It gives
+each company's phones and website from hitta.se, and in mode 1 the straight-line km from the anchor
+(road is about 1.3 times it). Sort by it and research the nearest rows first. `Title` carries the
+dashed org.nr, so check it matches the row. Leave out `-Lat` and `-Lon` in mode 3.
+
+**Then the websites.** Save the rows' websites as CSV (`Name`, `Url`) and run
 `powershell -File scripts/get-site-contacts.ps1 -In <sites.csv> -Out <found.csv>`. It reads each
 home page and up to 3 linked contact or about pages and lists every phone number and email on
 them, with no model. Tested on Värnamo: the number to dial was among them for 34 of 37 sites.
@@ -263,7 +288,7 @@ Open the browser if it matters. Never rebuild an address from the pattern of col
 | Mode | What goes in the drive column |
 |---|---|
 | 1 | Drive distance and time from the anchor |
-| 2 | Drive time from A, and the detour |
+| 2 | Drive from A, drive to B, and the detour |
 | 3 | Nothing, the column is left out |
 
 Estimate first, from the road distance:
@@ -280,6 +305,10 @@ Check the real figure in Google Maps only where it decides whether a row lives:
 - Mode 2: detours between 10 and 20 minutes. Use a directions URL with the lead as a waypoint.
 
 Drop `ca` on checked figures, so a checked number and an estimate never look the same.
+
+**Mode 2, every row in table 1:** read the real km and minutes from A to the lead and from the lead
+to B, from the Google Maps route with the lead as waypoint. They go in the drive column and in the
+note's `🚗` part (see `ADVERSUS-TEMPLATE.md`), so they are never estimates.
 
 ## Step 8, reread before you write
 
@@ -336,7 +365,7 @@ ringing to what they need afterwards.
 | Why Blackbird | Varför Blackbird | Hvorfor Blackbird |
 | Address | Adress | Adresse |
 | Drive (mode 1) | Körsträcka från ankaret | Køretid fra ankeret |
-| Drive (mode 2) | Körtid från A, omväg | Køretid fra A, omvej |
+| Drive (mode 2) | Från A, till B, omväg | Fra A, til B, omvej |
 | Map link | Google Maps | Google Maps |
 | Email | E-post | E-mail |
 

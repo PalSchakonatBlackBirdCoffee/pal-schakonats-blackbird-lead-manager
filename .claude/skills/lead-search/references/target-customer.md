@@ -20,7 +20,7 @@ The deck splits the market three ways and Blackbird deliberately targets the mid
 
 The middle band is the opportunity: enough people to consume real volume, but still drinking out
 of a home-grade filter brewer or a supermarket espresso machine that nobody services. The lead
-filter is 4 to 50 (see `REQUIREMENTS.md`), which starts one step below the deck's band.
+filter is 3 to 50 (see `REQUIREMENTS.md`), which starts one step below the deck's band.
 
 Consumption threshold from the deck: decision makers at companies using more than 2 kg of coffee
 a month.
@@ -60,7 +60,7 @@ to what a lead row should make possible: the row should tell the booker enough t
 
 ## Reading a candidate
 
-Good sign: 4 to 50 on site, own premises, staff and often customers present during the day,
+Good sign: 3 to 50 on site, own premises, staff and often customers present during the day,
 a current setup that is obviously consumer-grade or shared.
 
 Cafés, restaurants, bakeries and hotels stay in. Their guest-facing coffee is not the target, the

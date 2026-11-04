@@ -46,8 +46,9 @@ existing lead only in the narrow way "Refreshing a lead" describes. The rest bel
 - **Never overwrite an existing lead's company data.** If a search turns up a company that is
   already there, its Firmanavn, CVR, address and employee fields stay as they are. Adversus makes
   most of them read-only on an existing lead anyway, which is the CRM agreeing with this rule.
-  The one thing you may do to an existing lead is described under "Refreshing a lead that exists
-  but was never dialled" below, and only for 1b rows the booker picked in Step 2.
+  What you may do to an existing lead is described under "Refreshing a lead that exists
+  but was never dialled" below, and only for 1b rows the booker picked in Step 2: a note, a
+  callback, and an empty `Telefon` filled.
 - **Never invent a field value.** See the last section.
 
 ## Tell the booker first
@@ -70,6 +71,12 @@ The checks in those steps (campaign name in the header, re-check before writing)
 
 At the end, say the real time. If it is far off, update the time here and in the `lead-guide`
 menu.
+
+## Name the chat
+
+Run on its own, once the list and `Save lead as` are known, rename the session to
+`Entry <Ort> <booker>`, for example `Entry Malmö Lina Bergström`. Inside `lead-search`, keep its
+name. If the rename tool is not available, skip it.
 
 ## Step 1 - Ask which campaign
 
@@ -173,7 +180,7 @@ damkonfektionsartiklar samt därmed förenlig verksamhet.` Fetch it when enterin
 shorten, translate or rewrite it. If the page has no description, leave the field empty.
 
 `Antal Ansatte (SE)` is a number field. When the registry only gives a band (`5-9`), leave the
-field empty and put the band in the note's `INFO:` instead (seen 2026-10-15, Fisken).
+field empty and put the band in the note's `ℹ️ INFO` instead (seen 2026-10-15, Fisken).
 
 Fill `Adresse` with the full visiting address (street and number, postnummer, ort) and `Vejnavn`
 with the street and number only. Booker's instruction, 2026-10-15.
@@ -208,7 +215,8 @@ belongs to.
 
 The labels, their order and examples are in `ADVERSUS-TEMPLATE.md`. Why the rules there matter:
 
-- **` | ` instead of line breaks**, because the timeline shows the note as one paragraph.
+- **` ▸ ` and a symbol on every part instead of line breaks**, because the timeline shows the note
+  as one paragraph and the booker skims it for the part they need.
 - **Name before number**, because in a run-on paragraph a number at the end of one person reads as
   the start of the next.
 - **Every verified number**, because a note with one number leaves the booker stuck when it does
@@ -216,7 +224,7 @@ The labels, their order and examples are in `ADVERSUS-TEMPLATE.md`. Why the rule
 
 ### When nobody is named on the web
 
-`FRÅGA EFTER:` / `SPØRG EFTER:` with the words `enligt bolagsregistret` / `ifølge CVR` is the
+`👤 FRÅGA EFTER` / `👤 SPØRG EFTER` with the words `enligt bolagsregistret` / `ifølge CVR` is the
 whole point of the piece. A name from the company register is a legal fact
 that gets a booker past a receptionist, and it is not a person who is expecting the call. A booker
 who cannot tell the two apart opens with the wrong sentence. If the register names nobody either
@@ -227,7 +235,7 @@ who cannot tell the two apart opens with the wrong sentence. If the register nam
 Keep it to what the template says. Everything else already lives in the list.
 
 On an existing lead whose dialled phone is wrong (see "Refreshing a lead" below), the right number
-still goes in `RING:`, and INFO says that the lead's own phone field dials the wrong number.
+still goes in `☎ RING`, and `ℹ️ INFO` says that the lead's own phone field dials the wrong number.
 
 ## Step 5b - Save lead as
 
@@ -292,21 +300,31 @@ the new ones, minus the creation. This is a standard part of the run, not an exc
 (booker's instruction, 2026-10-21):
 
 - **Re-check first.** Right before writing, read the lead's timeline again. If a call of 20 seconds
-  or more has appeared, or someone else has put it on a callback since the list was made, skip it
-  and name it in the report. The list can be days old, and a colleague may have reached them since.
-  `bbRefresh` does this check itself and returns `SKIP` with the reason.
+  or more has appeared, or a colleague has a private or shared callback on it, skip it and name it
+  in the report. An overdue callback counts: it is still in that colleague's queue (2026-10-30, six
+  of Annika's on the Mörrum run). An automatic redial does not. The list can be days old, and a
+  colleague may have reached them since. `bbRefresh`, `bbVerify` and `bbSetPhone` all check this
+  themselves and return `SKIP` with the reason, before anything is written. Replace a skipped row
+  with the next nearest fresh company if the booker asked for a number of leads.
+- **Taking a lead from a colleague.** Only when the booker says so for that lead:
+  `await bbRefresh(<lead id>, '<note>', true)`.
 - Write the note exactly as Step 5 describes, then `await bbRefresh(<lead id>, '<note>')`.
 - It saves `Callback time` 5 minutes, `Status` Callback, owner the booker, per Step 5b and Step 6,
   and changes nothing else.
 - A lead in another campaign than the one in `bbSetup` returns `STOP`. Run `bbSetup` with that
-  lead's campaign and try again. Refreshing never moves a lead.
+  lead's campaign and try again. Refreshing never moves a lead. The lead's own campaign decides,
+  not the campaign name in its timeline, which goes stale when a lead has been moved (2026-10-27).
 
-What you cannot change, and must handle in the note instead: on an existing lead the company
-fields stay as they are (`bbRefresh` sends them back untouched), and so does the phone the dialer
-will actually call. A lead whose primary number is wrong will still ring the wrong number when the
-callback comes due. Put the right number in `RING:`, say in `INFO:` that the lead's own phone dials
-the wrong one, and tell the booker in the closing report which leads have that problem so he dials
-those by hand.
+**Check the number first.** Before writing the notes, run `bbVerify` on every 1b lead and read
+`dials`. Some leads have no number at all (2 of 4 on the Älmhult-Strömsnäsbruk run, 2026-10-28).
+
+- **Empty:** after `bbRefresh`, run `await bbSetPhone(<lead id>, '<☎ RING digits>')`. It fills the
+  empty `Telefon` field and nothing else, and returns `SKIP` if a number is already there. Then
+  `bbVerify` shows the number under `dials`. Booker's instruction, 2026-10-28.
+- **A wrong number:** that stays, like the other company fields (`bbRefresh` sends them back
+  untouched). The dialer will still ring it when the callback comes due. Put the right number in
+  `☎ RING`, say in `ℹ️ INFO` that the lead's own phone dials the wrong one, and tell the booker in the
+  closing report which leads have that problem so he dials those by hand.
 
 Do not do this to a row from table 2. A lead somebody has genuinely spoken to keeps the status that
 conversation earned it, and quietly turning a `Not interested` into a callback is how a team starts
@@ -319,7 +337,7 @@ been asked.
 
 Run `await bbVerify(<lead id>)` on every lead written. Each line should show `Genopkald private`,
 the booker's user id as owner, the chosen campaign id, the right name, org.nr and postnummer, the
-number from `RING:` or `Telefon` under `dials`, and at least one note. Search returns no field
+number from `☎ RING` or `Telefon` under `dials`, and at least one note. Search returns no field
 values, so `bbVerify` opens the lead and saves it again unchanged, with its callback time pinned to
 the one it already has. That adds one more save line to the timeline, which is expected.
 
