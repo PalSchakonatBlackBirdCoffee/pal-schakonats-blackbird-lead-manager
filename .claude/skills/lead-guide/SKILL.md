@@ -1,6 +1,6 @@
 ---
 name: lead-guide
-description: "Explain to a Blackbird booker what the lead finder can do. Use this when the booker says I want more leads, jag vill ha fler leads, jeg vil have flere leads, what can you do, vad kan du göra, how does this work, or asks for leads without saying where."
+description: "Explain to a Blackbird booker what Påls Lead Manager can do. Use this when the booker says I want more leads, jag vill ha fler leads, jeg vil have flere leads, what can you do, vad kan du göra, how does this work, or asks for leads without saying where."
 ---
 
 # Lead guide

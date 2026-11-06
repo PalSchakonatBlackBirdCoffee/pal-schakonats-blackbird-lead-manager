@@ -1,4 +1,4 @@
-# Blackbird lead finder, MVP suggestion
+# Påls Lead Manager, MVP suggestion
 
 ## Goal
 

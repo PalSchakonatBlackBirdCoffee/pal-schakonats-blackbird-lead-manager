@@ -6,6 +6,7 @@
 //   await bbRefresh(1036696057, 'RING: ...')      a 1b lead: note and callback, its fields stay as they are
 //   await bbRefresh(1036696057, 'RING: ...', true)  only when the booker says to take this lead from a colleague
 //   await bbSetPhone(1036696155, '0708855504')    a 1b lead with no number: fills the empty Telefon field
+//   await bbFixPhone(1046105672, ['08933155'])    an 08 number stored as +4646..., dialled as 046
 //   await bbVerify(1054984770)                    read a lead back
 // Every call returns one short line. Anything starting with STOP means: stop and tell the booker.
 
@@ -136,6 +137,32 @@ window.bbSetPhone = async (leadId, digits) => {
   const r = await bbClose(o.json, data, '', l.status, next);
   if (r.status !== 200) return 'STOP: save ' + leadId + ' failed ' + r.status + ' ' + r.text;
   return 'set Telefon ' + digits + ' on lead ' + leadId;
+};
+
+// Repairs an 08 number stored with 46 twice (+46468933155), which the dialer rings as 046-893 31 55.
+// `known` holds the digits of numbers found on the company's pages, e.g. ['08933155']. A value is only
+// changed when its repaired form is one of them, so a real Lund number (046) is never touched.
+window.bbFixPhone = async (leadId, known) => {
+  if (!window.__bbe) return 'STOP: run bbSetup first';
+  const sessions = await bbSessions(leadId);
+  if (!sessions) return 'STOP: activity ' + leadId + ', nothing written';
+  const held = bbHeldBy(sessions);
+  if (held) return 'SKIP ' + leadId + ': ' + held;
+  const o = await bbPost('/api/v2/dialer/sessions/createForLead', {lead: {id: leadId}});
+  if (o.status !== 200 || !o.json || !o.json.lead) return 'STOP: open ' + leadId + ' ' + o.status + ', nothing written';
+  const l = o.json.lead;
+  if (String(l.campaignId) !== String(window.__bbe.camp.id)) {
+    return 'STOP: lead ' + leadId + ' is in campaign ' + l.campaignId + ', run bbSetup with that campaign';
+  }
+  const next = l.nextCall ? {type: 'fixed', timestamp: new Date(l.nextCall).toISOString().replace('.000', '')} : null;
+  const data = {...l.data}, fixed = [];
+  for (const [k, x] of Object.entries(l.data || {})) {
+    const m = String(x.value).replace(/\D/g, '').match(/^4646(\d{6,9})$/);
+    if (m && known.includes('0' + m[1])) { data[k] = {...x, value: '+46' + m[1]}; fixed.push(x.name + ' 0' + m[1]); }
+  }
+  const r = await bbClose(o.json, data, '', l.status, next);
+  if (r.status !== 200) return 'STOP: save ' + leadId + ' failed ' + r.status + ' ' + r.text;
+  return fixed.length ? 'fixed ' + leadId + ': ' + fixed.join(', ') : 'SKIP ' + leadId + ': no 4646 number';
 };
 
 // Reads a lead back. Search returns no field values, so the lead is opened and saved again unchanged,

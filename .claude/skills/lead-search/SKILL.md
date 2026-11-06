@@ -55,6 +55,11 @@ Once the area is known, rename the session to `Leads <Ort> <YYYY-MM-DD>`, for ex
 `Leads Helsingborg 2026-10-29`. In mode 2, use `Leads <Ort A>-<Ort B> <YYYY-MM-DD>`. If the
 rename tool is not available, skip it.
 
+After step 4, once the leads are read back, add `+<entered>(<table 1>)`: the leads entered into
+Adversus, and every lead in table 1 (1a plus 1b, with or without a phone). Example:
+`Leads Skogås 2026-11-04 +30(208)`. Nothing entered gives `+0(208)` (booker's instruction,
+2026-11-05).
+
 ## Before you start
 
 1. **Pick the mode** from what the booker wrote (see the next section). If it is unclear, ask once.

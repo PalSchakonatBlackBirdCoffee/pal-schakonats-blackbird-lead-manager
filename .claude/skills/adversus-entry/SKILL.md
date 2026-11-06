@@ -325,6 +325,11 @@ the new ones, minus the creation. This is a standard part of the run, not an exc
   untouched). The dialer will still ring it when the callback comes due. Put the right number in
   `☎ RING`, say in `ℹ️ INFO` that the lead's own phone dials the wrong one, and tell the booker in the
   closing report which leads have that problem so he dials those by hand.
+- **An 08 number dialled as 046:** the `Telefon - Hitta 1` field holds the number with 46 twice
+  (`+46468933155`), so the dialer rings 046-893 31 55. After `bbRefresh`, run
+  `await bbFixPhone(<lead id>, [<digits of every number in the note>])`. It changes only a value whose
+  repaired form is one of those numbers, so a real 046 number stays. Booker's instruction, 2026-11-05
+  (8 of 110 Skogås leads had it).
 
 Do not do this to a row from table 2. A lead somebody has genuinely spoken to keeps the status that
 conversation earned it, and quietly turning a `Not interested` into a callback is how a team starts
